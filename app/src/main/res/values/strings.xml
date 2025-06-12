@@ -14,4 +14,7 @@
     <string name="hapus_hewan">Hapus Hewan</string>
     <string name="konfimasi">Anda yakin ingin menghapus hewan ini?</string>
     <string name="hapus">Hapus</string>
+    <string name="input">Masukkan nama tempat atau kuliner</string>
+    <string name="rating">Masukkan Rating</string>
+    <string name="foto">Foto</string>
 </resources>

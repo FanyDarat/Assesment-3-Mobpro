@@ -68,7 +68,7 @@ fun WikulDialog(
 
     if (wikul != null) {
         name = wikul.name
-        rating = wikul.rating.toString()
+        rating = wikul.rating
     }
 
     Dialog(
@@ -92,7 +92,7 @@ fun WikulDialog(
                             )
                             .crossfade(true)
                             .build(),
-                        contentDescription = stringResource(R.string.gambar, wikul.name),
+                        contentDescription = stringResource(R.string.input, wikul.name),
                         contentScale = ContentScale.Crop,
                         placeholder = painterResource(id = R.drawable.loading_img),
                         error = painterResource(id = R.drawable.broken_img),
@@ -121,7 +121,7 @@ fun WikulDialog(
                     modifier = Modifier.padding(top = 8.dp).fillMaxWidth()
                 ) {
                     Text(
-                        text = stringResource(id = R.string.gambar) //////
+                        text = stringResource(id = R.string.foto)
                     )
                 }
                 OutlinedTextField(
@@ -131,7 +131,7 @@ fun WikulDialog(
                     },
                     label = {
                         Text(
-                            text = stringResource(id = R.string.gambar)
+                            text = stringResource(id = R.string.input)
                         )
                     },
                     maxLines = 1,
@@ -148,7 +148,7 @@ fun WikulDialog(
                     },
                     label = {
                         Text(
-                            text = stringResource(id = R.string.gambar)
+                            text = stringResource(id = R.string.rating)
                         )
                     },
                     maxLines = 1,
