@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Mobpro1</string>
+    <string name="app_name">Wikul</string>
     <string name="gambar">Gambar %1$s</string>
     <string name="error">Gagal memuat data.. Koneksi error</string>
     <string name="try_again">Coba lagi</string>
