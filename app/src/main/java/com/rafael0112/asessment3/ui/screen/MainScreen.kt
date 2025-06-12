@@ -12,11 +12,13 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -80,6 +82,7 @@ import com.rafael0112.asessment3.model.User
 import com.rafael0112.asessment3.network.ApiStatus
 import com.rafael0112.asessment3.network.HewanApi
 import com.rafael0112.asessment3.network.UserDataStore
+import com.rafael0112.asessment3.network.WikulApi
 import com.rafael0112.asessment3.ui.theme.Mobpro1Theme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -195,43 +198,54 @@ fun MainScreen() {
 }
 
 @Composable
-fun ScreenContent(viewModel: MainViewModel, userId: String, onDelete: (String) -> Unit, modifier: Modifier = Modifier) {
+fun ScreenContent(viewModel: MainViewModel, token: String, onHapus: (id: Long) -> Unit, modifier: Modifier = Modifier) {
     val data by viewModel.data
     val status by viewModel.status.collectAsState()
+    var showDetailDialog by remember { mutableStateOf<Wikul?>(null) }
 
-    LaunchedEffect(userId) {
-        viewModel.retrieveData(userId)
+    LaunchedEffect(token) {
+        viewModel.retrieveData(token)
     }
+
+
 
     when (status) {
         ApiStatus.LOADING -> {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
-            ){
+            ) {
                 CircularProgressIndicator()
             }
         }
+
         ApiStatus.SUCCESS -> {
             LazyVerticalGrid(
                 modifier = modifier.fillMaxSize().padding(4.dp),
                 columns = GridCells.Fixed(2),
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
-                items(data) {
-                    ListItem(wikul = it, onDelete = onDelete)
+                data?.let { it ->
+                    items(it.data) {
+                        ListItem(wikul = it, onHapus) {
+                            showDetailDialog = it
+                        }
+                    }
                 }
             }
         }
+
         ApiStatus.FAILED -> {
             Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                Text(text = stringResource(id = R.string.error))
+                Text(
+                    text = stringResource(id = R.string.error),
+                )
                 Button(
-                    onClick = {viewModel.retrieveData(userId)},
+                    onClick = { viewModel.retrieveData(token) },
                     modifier = Modifier.padding(top = 16.dp),
                     contentPadding = PaddingValues(horizontal = 32.dp, vertical = 16.dp)
                 ) {
@@ -242,7 +256,63 @@ fun ScreenContent(viewModel: MainViewModel, userId: String, onDelete: (String) -
     }
 }
 
-
+@Composable
+fun ListItem(wikul: Wikul, onHapus: (id : Long) -> Unit, onClick: () -> Unit = {}) {
+    Box(
+        modifier = Modifier.padding(4.dp).border(1.dp, Color.Gray).clickable {
+            if (wikul.mine == "1") {
+                onClick()
+            }
+        },
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(
+                    WikulApi.getImageUrl(wikul.id_wikul)
+                )
+                .crossfade(true)
+                .build(),
+            contentDescription = stringResource(R.string.gambar, wikul.name),
+            contentScale = ContentScale.Crop,
+            placeholder = painterResource(id = R.drawable.loading_img),
+            error = painterResource(id = R.drawable.broken_img),
+            modifier = Modifier.fillMaxWidth().aspectRatio(1f)
+        )
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+                .background(Color(red = 0f, green = 0f, blue = 0f, alpha = 0.5f))
+                .padding(4.dp)
+        ) {
+            Column{
+                Text(
+                    text = wikul.name,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Text(
+                    text = wikul.rating,
+                    fontStyle = FontStyle.Italic,
+                    fontSize = 14.sp,
+                    color = Color.White
+                )
+            }
+            if (wikul.mine == "1") {
+                IconButton(
+                    onClick = {
+                        onHapus(wikul.id_wikul)
+                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = stringResource(id = R.string.hapus)
+                    )
+                }
+            }
+        }
+    }
+}
 
 private suspend fun signIn(viewModel: MainViewModel, context: Context, dataStore: UserDataStore) {
     val googleIdOption : GetGoogleIdOption = GetGoogleIdOption.Builder()
