@@ -2,7 +2,6 @@ package com.rafael0112.asessment3.network
 
 import com.rafael0112.asessment3.model.OpStatus
 import com.rafael0112.asessment3.model.WikulStatus
-import com.rafael0112.asessment3.model.WikulinerResponse
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import okhttp3.MultipartBody
