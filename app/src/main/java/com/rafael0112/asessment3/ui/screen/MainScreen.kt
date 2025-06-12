@@ -1,15 +1,8 @@
 package com.rafael0112.asessment3.ui.screen
 
-import android.content.ContentResolver
 import android.content.Context
-import android.content.res.Configuration
-import android.graphics.Bitmap
-import android.graphics.ImageDecoder
-import android.os.Build
-import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -43,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -68,19 +62,14 @@ import androidx.credentials.exceptions.GetCredentialException
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.canhub.cropper.CropImageContract
-import com.canhub.cropper.CropImageContractOptions
-import com.canhub.cropper.CropImageOptions
-import com.canhub.cropper.CropImageView
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.rafael0112.asessment3.BuildConfig
 import com.rafael0112.asessment3.R
-import com.rafael0112.asessment3.model.Wikul
 import com.rafael0112.asessment3.model.User
+import com.rafael0112.asessment3.model.Wikul
 import com.rafael0112.asessment3.network.ApiStatus
-import com.rafael0112.asessment3.network.HewanApi
 import com.rafael0112.asessment3.network.UserDataStore
 import com.rafael0112.asessment3.network.WikulApi
 import com.rafael0112.asessment3.ui.theme.Mobpro1Theme
@@ -99,100 +88,102 @@ fun MainScreen() {
     val errorMessage by viewModel.errorMessage
 
     var showDialog by remember { mutableStateOf(false) }
-    var showHewanDialog by remember { mutableStateOf(false) }
+    var showBukuDialog by remember { mutableStateOf(false) }
     var showHapusDialog by remember { mutableStateOf(false) }
+    var hapusID by remember { mutableLongStateOf(0L) }
 
-    var hewanId by remember { mutableStateOf("") }
+    Mobpro1Theme {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = stringResource(
+                                id = R.string.app_name
+                            )
+                        )
 
-    var bitmap: Bitmap ? by remember { mutableStateOf(null) }
-    val launcher = rememberLauncherForActivityResult(CropImageContract()) {
-        bitmap = getCroppedImage(context.contentResolver, it)
-        if (bitmap != null) {
-            showHewanDialog = true
-        }
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(text = stringResource(id = R.string.app_name))
-                },
-                colors = TopAppBarDefaults.mediumTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.primary
-                ),
-                actions = {
-                    IconButton(onClick = {
-                        if (user.token.isEmpty()) {
-                            CoroutineScope(Dispatchers.IO).launch { signIn(context, dataStore) }
-                        } else {
-                            showDialog = true
+                    },
+                    colors = TopAppBarDefaults.mediumTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.primary
+                    ),
+                    actions = {
+                        IconButton(
+                            onClick = {
+                                if (user.token.isEmpty()) {
+                                    CoroutineScope(Dispatchers.IO).launch { signIn(viewModel, context, dataStore) }
+                                } else {
+                                    showDialog = true
+                                }
+                            }
+                        ) {
+                            Icon(
+                                painter = painterResource(R.drawable.baseline_account_circle_24),
+                                contentDescription = stringResource(R.string.profil),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         }
-                    }) {
+                    }
+                )
+            },
+            floatingActionButton = {
+                if (user.token.isNotEmpty()) {
+                    FloatingActionButton(
+                        onClick = {
+                            showBukuDialog = true
+                        }
+                    ) {
                         Icon(
-                            painter = painterResource(R.drawable.baseline_account_circle_24),
-                            contentDescription = stringResource(R.string.profil),
-                            tint = MaterialTheme.colorScheme.primary
+                            imageVector = Icons.Default.Add,
+                            contentDescription = stringResource(id = R.string.tambah_hewan)
                         )
                     }
                 }
-            )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = {
-                val options = CropImageContractOptions(
-                    null, CropImageOptions(
-                        imageSourceIncludeGallery = false,
-                        imageSourceIncludeCamera = true,
-                        fixAspectRatio = true
-                    )
-                )
-                launcher.launch(options)
-            }) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = stringResource(id = R.string.tambah_hewan)
-                )
             }
-        }
-    ) { innerPadding ->
-        ScreenContent(viewModel, user.token, onDelete = {
-            id ->
-            hewanId = id
-            showHapusDialog = true
-        }, Modifier.padding(innerPadding))
+        ) { innerPadding ->
+            ScreenContent(viewModel, user.token,
+                {
+                        id ->
+                    hapusID = id
+                    showHapusDialog = true
+                },
+                Modifier.padding(innerPadding)
+            )
 
-        if (showDialog) {
-            ProfilDialog(
-                user = user,
-                onDismissRequest = { showDialog = false}) {
-                    CoroutineScope(Dispatchers.IO).launch { signOut(context, dataStore) }
+            if (showDialog) {
+                ProfilDialog(
+                    user = user,
+                    onDismissRequest = { showDialog = false }
+                ) { CoroutineScope(Dispatchers.IO).launch { signOut(context, dataStore) }
                     showDialog = false
                 }
-        }
-
-        if (showHewanDialog) {
-            HewanDialog(
-                bitmap = bitmap,
-                onDismissRequest = { showHewanDialog = false }) {
-                nama, namaLatin -> viewModel.saveData(user.token, nama, namaLatin, bitmap!!)
-                showHewanDialog = false
             }
-        }
 
-        if (showHapusDialog) {
-            HapusDialog(
-                onDismissRequest = { showHapusDialog = false}
-            ) {
-                viewModel.deleteData(user.token, hewanId)
-                showHapusDialog = false
+            if (showBukuDialog) {
+                WikulDialog(
+                    onDismissRequest = { showBukuDialog = false }
+                ) {
+                        name, rating, bitmap ->
+                    showBukuDialog = false
+                    viewModel.saveData(user.token, name, rating, bitmap!!)
+                }
             }
-        }
 
-        if (errorMessage != null) {
-            Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
-            viewModel.clearMessage()
+            if (showHapusDialog) {
+                HapusDialog(
+                    onDismissRequest = { showHapusDialog = false }
+                ) {
+                    viewModel.deleteData(user.token, hapusID)
+                    Toast.makeText(context, context.getString(R.string.gambar), Toast.LENGTH_LONG).show()
+                    showHapusDialog = false
+                }
+            }
+
+            if (errorMessage != null) {
+                Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
+                viewModel.clearMessage()
+            }
         }
     }
 }
@@ -207,7 +198,16 @@ fun ScreenContent(viewModel: MainViewModel, token: String, onHapus: (id: Long) -
         viewModel.retrieveData(token)
     }
 
-
+    if (showDetailDialog != null) {
+        WikulDialog (
+            wikul = showDetailDialog!!,
+            onDismissRequest = { showDetailDialog = null },
+            onConfirmation = { name, rating, bitmap ->
+                viewModel.updateData(token, showDetailDialog!!.id_wikul, name, rating, bitmap)
+                showDetailDialog = null
+            }
+        )
+    }
 
     when (status) {
         ApiStatus.LOADING -> {
@@ -349,6 +349,7 @@ private suspend fun handleSignIn(
             val photoUrl = googleId.profilePictureUri.toString()
             if (token.isNotEmpty()) {
                 val sanctum = viewModel.register(nama, email, token)
+                println(sanctum)
                 if (sanctum.isEmpty()) {
                     Log.e("SIGN-IN", "Error: registration failed")
                     return
@@ -384,10 +385,10 @@ private suspend fun signOut(context: Context, dataStore: UserDataStore) {
     }
 }
 
+
 @Preview(showBackground = true)
-@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showBackground = true)
 @Composable
-fun GreetingPreview() {
+fun MainScreenPreview() {
     Mobpro1Theme {
         MainScreen()
     }
