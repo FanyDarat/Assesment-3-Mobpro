@@ -75,7 +75,7 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import com.rafael0112.asessment3.BuildConfig
 import com.rafael0112.asessment3.R
-import com.rafael0112.asessment3.model.Hewan
+import com.rafael0112.asessment3.model.Wikul
 import com.rafael0112.asessment3.model.User
 import com.rafael0112.asessment3.network.ApiStatus
 import com.rafael0112.asessment3.network.HewanApi
@@ -219,7 +219,7 @@ fun ScreenContent(viewModel: MainViewModel, userId: String, onDelete: (String) -
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
                 items(data) {
-                    ListItem(hewan = it, onDelete = onDelete)
+                    ListItem(wikul = it, onDelete = onDelete)
                 }
             }
         }
@@ -242,68 +242,10 @@ fun ScreenContent(viewModel: MainViewModel, userId: String, onDelete: (String) -
     }
 }
 
-@Composable
-fun ListItem(hewan: Hewan, onDelete : (String) -> Unit) {
-    Box(
-        modifier = Modifier.padding(4.dp).border(1.dp, Color.Gray),
-        contentAlignment = Alignment.BottomCenter
-    ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(HewanApi.getHewanUrl(hewan.imageId))
-                .crossfade(true)
-                .build(),
-            contentDescription = stringResource(R.string.gambar, hewan.nama),
-            contentScale = ContentScale.Crop,
-            placeholder = painterResource(id = R.drawable.loading_img),
-            error = painterResource(id = R.drawable.broken_img),
-            modifier = Modifier.fillMaxWidth().padding(4.dp)
-        )
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(4.dp)
-                .background(Color(red = -0f, green = 0f, blue = 0f, alpha = 0.5f))
-                .padding(4.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = hewan.nama,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    Text(
-                        text = hewan.namaLatin,
-                        fontStyle = FontStyle.Italic,
-                        fontSize = 14.sp,
-                        color = Color.White
-                    )
-                }
-                if (hewan.mine == "1") {
-                    IconButton(
-                        onClick = { onDelete(hewan.id)}
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = stringResource(id = R.string.hapus_hewan),
-                            tint = MaterialTheme.colorScheme.surface
-                        )
-                    }
-                }
-            }
-
-        }
 
 
-
-    }
-}
-
-private suspend fun signIn(context: Context, dataStore: UserDataStore) {
-    val googleIdOption: GetGoogleIdOption = GetGoogleIdOption.Builder()
+private suspend fun signIn(viewModel: MainViewModel, context: Context, dataStore: UserDataStore) {
+    val googleIdOption : GetGoogleIdOption = GetGoogleIdOption.Builder()
         .setFilterByAuthorizedAccounts(false)
         .setServerClientId(BuildConfig.API_KEY)
         .build()
@@ -315,31 +257,48 @@ private suspend fun signIn(context: Context, dataStore: UserDataStore) {
     try {
         val credentialManager = CredentialManager.create(context)
         val result = credentialManager.getCredential(context, request)
-        handleSignIn(result, dataStore)
+        handleSignIn(viewModel, result, dataStore)
     } catch (e: GetCredentialException) {
-        Log.e("SIGN_IN", "Error: ${e.errorMessage}")
+        Log.e("SIGN-IN", "Error: ${e.errorMessage}")
     }
 }
 
 private suspend fun handleSignIn(
+    viewModel: MainViewModel,
     result: GetCredentialResponse,
     dataStore: UserDataStore
-    ) {
+) {
     val credential = result.credential
-
-    if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+    if (credential is CustomCredential &&
+        credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
         try {
             val googleId = GoogleIdTokenCredential.createFrom(credential.data)
             val token = googleId.idToken
             val nama = googleId.displayName ?: ""
             val email = googleId.id
             val photoUrl = googleId.profilePictureUri.toString()
-            dataStore.saveData(User(token, nama, email, photoUrl))
+            if (token.isNotEmpty()) {
+                val sanctum = viewModel.register(nama, email, token)
+                if (sanctum.isEmpty()) {
+                    Log.e("SIGN-IN", "Error: registration failed")
+                    return
+                }
+
+                dataStore.saveData(
+                    User(
+                        token = "Bearer $sanctum",
+                        name = nama,
+                        email = email,
+                        photoUrl = photoUrl
+                    )
+                )
+                Log.d("SIGN-IN", "Success: $nama, $email, $photoUrl, $sanctum")
+            }
         } catch (e: GoogleIdTokenParsingException) {
-            Log.e("SIGN_IN", "Error: ${e.message}")
+            Log.e("SIGN-IN", "Error: ${e.message}")
         }
     } else {
-        Log.e("SIGN_IN", "Error: unregconized custom credential type.")
+        Log.e("SIGN-IN", "Error: unrecognized custom credential type")
     }
 }
 
@@ -351,25 +310,7 @@ private suspend fun signOut(context: Context, dataStore: UserDataStore) {
         )
         dataStore.saveData(User())
     } catch (e: ClearCredentialException) {
-        Log.e("SIGN_IN", "Error: ${e.errorMessage}")
-    }
-}
-
-private fun getCroppedImage(
-    resolver: ContentResolver,
-    result: CropImageView.CropResult
-):Bitmap? {
-    if (!result.isSuccessful) {
-        Log.e("Image", "Error: ${result.error}")
-        return null
-    }
-    val uri = result.uriContent ?: return null
-
-    return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
-        MediaStore.Images.Media.getBitmap(resolver, uri)
-    } else {
-        val source = ImageDecoder.createSource(resolver, uri)
-        ImageDecoder.decodeBitmap(source)
+        Log.e("SIGN-IN", "Error: ${e.errorMessage}")
     }
 }
 
