@@ -68,7 +68,7 @@ fun ProfilDialog(
                     modifier = Modifier.padding(top = 16.dp)
                 )
                 Text(
-                    text = user.token,
+                    text = user.email,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
