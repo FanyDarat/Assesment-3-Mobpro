@@ -175,7 +175,7 @@ fun MainScreen() {
                     onDismissRequest = { showHapusDialog = false }
                 ) {
                     viewModel.deleteData(user.token, hapusID)
-                    Toast.makeText(context, context.getString(R.string.gambar), Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, context.getString(R.string.pesan_hapus), Toast.LENGTH_LONG).show()
                     showHapusDialog = false
                 }
             }

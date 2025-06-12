@@ -16,4 +16,5 @@
     <string name="input">Masukkan nama tempat atau kuliner</string>
     <string name="rating">Masukkan Rating</string>
     <string name="foto">Foto</string>
+    <string name="pesan_hapus">Data telah dihapus!</string>
 </resources>
