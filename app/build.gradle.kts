@@ -70,6 +70,7 @@ dependencies {
     implementation(libs.googleid)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.android.image.cropper)
+    implementation(libs.logging.interceptor.v4120)
 
     testImplementation(libs.junit)
 
