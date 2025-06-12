@@ -88,7 +88,7 @@ fun MainScreen() {
     val errorMessage by viewModel.errorMessage
 
     var showDialog by remember { mutableStateOf(false) }
-    var showBukuDialog by remember { mutableStateOf(false) }
+    var showWikulDialog by remember { mutableStateOf(false) }
     var showHapusDialog by remember { mutableStateOf(false) }
     var hapusID by remember { mutableLongStateOf(0L) }
 
@@ -131,7 +131,7 @@ fun MainScreen() {
                 if (user.token.isNotEmpty()) {
                     FloatingActionButton(
                         onClick = {
-                            showBukuDialog = true
+                            showWikulDialog = true
                         }
                     ) {
                         Icon(
@@ -160,12 +160,12 @@ fun MainScreen() {
                 }
             }
 
-            if (showBukuDialog) {
+            if (showWikulDialog) {
                 WikulDialog(
-                    onDismissRequest = { showBukuDialog = false }
+                    onDismissRequest = { showWikulDialog = false }
                 ) {
                         name, rating, bitmap ->
-                    showBukuDialog = false
+                    showWikulDialog = false
                     viewModel.saveData(user.token, name, rating, bitmap!!)
                 }
             }
