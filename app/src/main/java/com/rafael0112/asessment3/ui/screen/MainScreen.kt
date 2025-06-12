@@ -44,6 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -76,6 +77,10 @@ import com.rafael0112.asessment3.ui.theme.Mobpro1Theme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.rafael0112.asessment3.model.WikulStatus
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -189,17 +194,36 @@ fun MainScreen() {
 }
 
 @Composable
-fun ScreenContent(viewModel: MainViewModel, token: String, onHapus: (id: Long) -> Unit, modifier: Modifier = Modifier) {
+fun ScreenContent(
+    viewModel: MainViewModel,
+    token: String,
+    onHapus: (id: Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val data by viewModel.data
     val status by viewModel.status.collectAsState()
     var showDetailDialog by remember { mutableStateOf<Wikul?>(null) }
+    var refreshing by remember { mutableStateOf(false) }
 
     LaunchedEffect(token) {
         viewModel.retrieveData(token)
     }
 
+    LaunchedEffect(status) {
+        if (status != ApiStatus.LOADING) {
+            refreshing = false
+        }
+    }
+
+    if (refreshing) {
+        LaunchedEffect(token) {
+            viewModel.retrieveData(token)
+            refreshing = false
+        }
+    }
+
     if (showDetailDialog != null) {
-        WikulDialog (
+        WikulDialog(
             wikul = showDetailDialog!!,
             onDismissRequest = { showDetailDialog = null },
             onConfirmation = { name, rating, bitmap ->
@@ -209,27 +233,73 @@ fun ScreenContent(viewModel: MainViewModel, token: String, onHapus: (id: Long) -
         )
     }
 
+    AndroidView(
+        factory = { context ->
+            SwipeRefreshLayout(context).apply {
+                setOnRefreshListener {
+                    refreshing = true
+                }
+
+                val composeView = ComposeView(context).apply {
+                    setContent {
+                        Content(
+                            status = status,
+                            data = data,
+                            refreshing = refreshing,
+                            onHapus = onHapus,
+                            onRefresh = {
+                                refreshing = true
+                            },
+                            onItemClick = { wikul ->
+                                showDetailDialog = wikul
+                            }
+                        )
+                    }
+                }
+                addView(composeView)
+            }
+        },
+        update = { swipeRefreshLayout ->
+            swipeRefreshLayout.isRefreshing = refreshing
+        },
+        modifier = modifier
+    )
+}
+
+@Composable
+private fun Content(
+    status: ApiStatus,
+    data: WikulStatus?,
+    refreshing: Boolean,
+    onHapus: (id: Long) -> Unit,
+    onRefresh: () -> Unit,
+    onItemClick: (Wikul) -> Unit
+) {
     when (status) {
         ApiStatus.LOADING -> {
-            Box(
-                modifier = modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
+            if (!refreshing) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
             }
         }
 
         ApiStatus.SUCCESS -> {
             LazyVerticalGrid(
-                modifier = modifier.fillMaxSize().padding(4.dp),
+                modifier = Modifier.fillMaxSize().padding(4.dp),
                 columns = GridCells.Fixed(2),
                 contentPadding = PaddingValues(bottom = 80.dp)
             ) {
                 data?.let { it ->
-                    items(it.data) {
-                        ListItem(wikul = it, onHapus) {
-                            showDetailDialog = it
-                        }
+                    items(it.data) { wikul ->
+                        ListItem(
+                            wikul = wikul,
+                            onHapus = onHapus,
+                            onClick = { onItemClick(wikul) }
+                        )
                     }
                 }
             }
@@ -237,15 +307,13 @@ fun ScreenContent(viewModel: MainViewModel, token: String, onHapus: (id: Long) -
 
         ApiStatus.FAILED -> {
             Column(
-                modifier = modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                Text(
-                    text = stringResource(id = R.string.error),
-                )
+                Text(text = stringResource(id = R.string.error))
                 Button(
-                    onClick = { viewModel.retrieveData(token) },
+                    onClick = onRefresh,
                     modifier = Modifier.padding(top = 16.dp),
                     contentPadding = PaddingValues(horizontal = 32.dp, vertical = 16.dp)
                 ) {
