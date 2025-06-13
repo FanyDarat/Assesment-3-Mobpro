@@ -76,7 +76,7 @@ object WikulApi {
     }
 
     fun getImageUrl(id: Long): String {
-        return "${BASE_URL}wikul/image/$id"
+        return "${BASE_URL}wikul/image/$id?timestamp=${System.currentTimeMillis()}"
     }
 }
 
